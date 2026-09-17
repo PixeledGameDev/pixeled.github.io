@@ -48,14 +48,13 @@
     display:flex; flex-direction:column;
     align-items:center;
     gap:6.8229cqw; /* 131px */
-    padding:0 1.3542cqw 6.8229cqw; /* 26px sides */
+    padding:8cqw 1.3542cqw 6.8229cqw; /* extra top padding clears the fixed topbar */
   }
 
-  /* ===== Topbar ===== */
+  /* ===== Topbar (fixed to viewport, always visible) ===== */
   .topbar{
-    position:sticky; top:0.7812cqw; z-index:20;
-    margin:0.7812cqw 0.4688cqw 0;
-    width:calc(100% - 0.9376cqw);
+    position:fixed; top:0.7812cqw; left:50%; transform:translateX(-50%); z-index:100;
+    width:calc(min(100vw, 1920px) - 0.9376cqw);
     background:var(--topbar);
     border-radius:6.7708cqw;
     display:flex; align-items:center;
@@ -72,6 +71,7 @@
   .topbar nav a{
     color:var(--white); text-decoration:none; font-weight:600;
     font-size:1.875cqw; text-align:center; white-space:nowrap;
+    cursor:pointer;
   }
   .topbar .divider{ width:0.1042cqw; height:3.0729cqw; background:rgba(255,255,255,0.65); flex-shrink:0; }
 
@@ -145,7 +145,7 @@
     flex-shrink:0;
   }
   .about-photo img{
-    width:100%; height:100%; object-fit:cover; object-position:90% center;
+    width:100%; height:100%; object-fit:cover; object-position:center;
     display:block;
   }
   .about-photo .credit{
@@ -178,13 +178,6 @@
     letter-spacing:-0.2cqw; white-space:nowrap;
   }
 
-  footer.page-footer{
-    position:relative; z-index:2;
-    text-align:center; padding:0 0 4cqw;
-    font-weight:900; font-size:2.0833cqw; letter-spacing:-0.125cqw;
-  }
-  footer.page-footer span{ font-weight:400; }
-
   /* ===== Scroll indicator (fixed, real px — not scaled with the canvas) ===== */
   .scroll-indicator{
     position:fixed; left:50%; bottom:22px; transform:translateX(-50%);
@@ -201,6 +194,8 @@
     transition:opacity .35s ease, transform .35s ease;
   }
   .scroll-indicator.visible{ opacity:1; transform:translateX(-50%) translateY(0); pointer-events:auto; }
+  .scroll-indicator{ cursor:pointer; }
+  .scroll-indicator:hover{ background:rgba(30,18,8,0.75); }
   .scroll-indicator .label b{ font-weight:900; }
   .scroll-indicator svg{ width:14px; height:14px; animation:bob 1.6s ease-in-out infinite; }
   @keyframes bob{ 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(4px);} }
@@ -220,7 +215,7 @@
   <div class="topbar">
     <div class="logo">PIXELED</div>
     <nav>
-      <a href="#home">About</a>
+      <a href="#about">About</a>
       <div class="divider"></div>
       <a href="#projects">Projects</a>
       <div class="divider"></div>
@@ -251,7 +246,7 @@
       <h2>ABOUT</h2>
       <div class="row">
         <div class="about-photo">
-          <img src="images/art.jpg" alt="Art by @cawuut">
+          <img src="images/about-art.jpg" alt="Art by @cawuut">
           <div class="credit">Art by @cawuut on Discord.</div>
         </div>
         <p class="about-desc">I am a ROBLOX game developer who has been scripting on the platform for around 5 years now, with some experience in other areas too. I currently do not want to take jobs as to not disturb the development of my current focus (<i>CONTAINMENT</i>)
@@ -274,8 +269,6 @@
       </div>
     </section>
   </main>
-
-  <footer class="page-footer">Projects <span>V</span></footer>
 </div>
 
 <div class="scroll-indicator" id="scrollIndicator">
@@ -286,10 +279,22 @@
 <script>
 (function(){
   var order = ['home','projects','about','contact'];
-  var nextLabel = { home:'Projects', projects:'About', about:'Contact', contact:null };
+  var displayName = { home:'Home', projects:'Projects', about:'About', contact:'Contact' };
   var sections = order.map(function(id){ return document.getElementById(id); });
   var indicator = document.getElementById('scrollIndicator');
   var label = document.getElementById('scrollLabel');
+  var topbar = document.querySelector('.topbar');
+
+  function topbarOffset(){
+    return topbar.getBoundingClientRect().height + 16;
+  }
+
+  function scrollToSection(id){
+    var el = document.getElementById(id);
+    if (!el) return;
+    var top = el.getBoundingClientRect().top + window.pageYOffset - topbarOffset();
+    window.scrollTo({ top: top, behavior:'smooth' });
+  }
 
   function currentSectionId(){
     var centerY = window.innerHeight / 2;
@@ -303,16 +308,36 @@
     return current;
   }
 
-  function update(){
+  function nextSectionId(){
     var id = currentSectionId();
-    var next = nextLabel[id];
+    var idx = order.indexOf(id);
+    return (idx >= 0 && idx < order.length - 1) ? order[idx + 1] : null;
+  }
+
+  function update(){
+    var next = nextSectionId();
     if (next){
-      label.textContent = next;
+      label.textContent = displayName[next];
       indicator.classList.add('visible');
     } else {
       indicator.classList.remove('visible');
     }
   }
+
+  // Topbar nav links: smooth-scroll accounting for the fixed topbar's height.
+  document.querySelectorAll('.topbar nav a').forEach(function(a){
+    a.addEventListener('click', function(e){
+      e.preventDefault();
+      var id = a.getAttribute('href').replace('#','');
+      scrollToSection(id);
+    });
+  });
+
+  // Scroll indicator: click to advance to the next section.
+  indicator.addEventListener('click', function(){
+    var next = nextSectionId();
+    if (next) scrollToSection(next);
+  });
 
   window.addEventListener('scroll', update, { passive:true });
   window.addEventListener('resize', update);
